@@ -665,6 +665,9 @@ ${reference.avoidPrompt || 'Undgå tekst, logoer, typografi, UI-elementer og dir
       const [copied, setCopied] = useState(false);
       const [isEditing, setIsEditing] = useState(false);
       const [editFormData, setEditFormData] = useState({ ...reference });
+      const [showDeleteModal, setShowDeleteModal] = useState(false);
+      const [deletePassword, setDeletePassword] = useState('');
+      const [deleteError, setDeleteError] = useState('');
 
       // Find current index
       const currentIndex = allReferences.findIndex((r) => r.id === reference.id);
@@ -702,6 +705,17 @@ ${reference.avoidPrompt || 'Undgå tekst, logoer, typografi, UI-elementer og dir
         e.preventDefault();
         onUpdateReference(editFormData);
         setIsEditing(false);
+      };
+
+      const handleConfirmDelete = (e) => {
+        e.preventDefault();
+        if (deletePassword === 'SletteMette') {
+          onDeleteReference(reference.id);
+          setShowDeleteModal(false);
+          onBack();
+        } else {
+          setDeleteError('Forkert adgangskode. Angiv koden for at bekræfte sletning.');
+        }
       };
 
       return (
@@ -750,6 +764,17 @@ ${reference.avoidPrompt || 'Undgå tekst, logoer, typografi, UI-elementer og dir
                 className="ml-2 font-mono text-xs px-3 py-1.5 border border-ink-crisp bg-paper-100 hover:border-rust text-ink hover:text-rust"
               >
                 {isEditing ? 'Annuller redigering' : 'Rediger kort'}
+              </button>
+              <button
+                onClick={() => {
+                  setDeletePassword('');
+                  setDeleteError('');
+                  setShowDeleteModal(true);
+                }}
+                className="font-mono text-xs px-3 py-1.5 border border-rust bg-rust-light text-rust hover:bg-rust hover:text-white transition-colors"
+                title="Slet reference (kræver adgangskode)"
+              >
+                Slet
               </button>
             </div>
           </div>
@@ -858,14 +883,13 @@ ${reference.avoidPrompt || 'Undgå tekst, logoer, typografi, UI-elementer og dir
                   <button
                     type="button"
                     onClick={() => {
-                      if (confirm('Er du sikker på, at du vil slette denne reference fra dit lokale arkiv?')) {
-                        onDeleteReference(reference.id);
-                        onBack();
-                      }
+                      setDeletePassword('');
+                      setDeleteError('');
+                      setShowDeleteModal(true);
                     }}
                     className="font-mono text-xs text-rust hover:underline"
                   >
-                    Slet reference
+                    Slet reference...
                   </button>
                   <button
                     type="submit"
@@ -875,6 +899,76 @@ ${reference.avoidPrompt || 'Undgå tekst, logoer, typografi, UI-elementer og dir
                   </button>
                 </div>
               </form>
+            </div>
+          )}
+
+          {/* Delete Verification Dialog */}
+          {showDeleteModal && (
+            <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+              <div className="bg-paper-100 border-2 border-rust w-full max-w-md p-6 shadow-2xl space-y-4">
+                <div className="flex items-center justify-between border-b border-paper-line pb-2">
+                  <div className="flex items-center gap-2 text-rust">
+                    <span className="w-2 h-2 rounded-full bg-rust"></span>
+                    <h3 className="font-mono text-xs uppercase font-bold tracking-wider">
+                      Bekræft sletning
+                    </h3>
+                  </div>
+                  <button
+                    onClick={() => setShowDeleteModal(false)}
+                    className="font-mono text-xs hover:text-rust"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <p className="font-serif text-base text-ink leading-snug">
+                  Er du sikker på, at du vil slette <span className="font-semibold text-rust">"{reference.title}"</span>?
+                </p>
+                <p className="font-mono text-xs text-ink-muted">
+                  Handlingen er permanent. Indtast sikkerhedskoden for at bekræfte.
+                </p>
+
+                <form onSubmit={handleConfirmDelete} className="space-y-3 pt-1">
+                  <div>
+                    <label className="block font-mono text-[11px] uppercase mb-1 font-semibold text-ink">
+                      Adgangskode:
+                    </label>
+                    <input
+                      type="password"
+                      autoFocus
+                      required
+                      value={deletePassword}
+                      onChange={(e) => {
+                        setDeletePassword(e.target.value);
+                        setDeleteError('');
+                      }}
+                      placeholder="Indtast adgangskode..."
+                      className="w-full font-mono text-xs p-2 bg-paper-50 border border-ink-crisp focus:border-rust"
+                    />
+                    {deleteError && (
+                      <p className="mt-1.5 font-mono text-xs text-rust font-semibold">
+                        {deleteError}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-paper-line">
+                    <button
+                      type="button"
+                      onClick={() => setShowDeleteModal(false)}
+                      className="font-mono text-xs px-3 py-1.5 bg-paper-200 border border-paper-line hover:bg-paper-300"
+                    >
+                      Annuller
+                    </button>
+                    <button
+                      type="submit"
+                      className="font-mono text-xs uppercase px-4 py-1.5 bg-rust text-white hover:bg-rust-hover font-semibold"
+                    >
+                      Bekræft & Slet
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
           )}
 
@@ -1098,6 +1192,8 @@ ${reference.avoidPrompt || 'Undgå tekst, logoer, typografi, UI-elementer og dir
         imageSrc: null,
       });
 
+      const [authPassword, setAuthPassword] = useState('');
+      const [authError, setAuthError] = useState('');
       const [isAnalyzing, setIsAnalyzing] = useState(false);
       const [imagePreview, setImagePreview] = useState(null);
       const fileInputRef = useRef(null);
@@ -1140,6 +1236,10 @@ ${reference.avoidPrompt || 'Undgå tekst, logoer, typografi, UI-elementer og dir
 
       const handleSubmit = (e) => {
         e.preventDefault();
+        if (authPassword !== 'OpretRessource') {
+          setAuthError('Forkert adgangskode. Angiv koden "OpretRessource" for at oprette.');
+          return;
+        }
         if (!formData.title) return;
 
         let domain = 'Ukendt kilde';
@@ -1327,10 +1427,40 @@ ${reference.avoidPrompt || 'Undgå tekst, logoer, typografi, UI-elementer og dir
                 />
               </div>
 
+              {/* Security Password required for creation */}
+              <div className="p-3 bg-paper-200 border border-ink-crisp space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block font-mono text-xs uppercase font-semibold text-ink">
+                    Sikkerhedskode for oprettelse *
+                  </label>
+                  <span className="font-mono text-[10px] text-ink-muted">Kræves for at gemme</span>
+                </div>
+                <input
+                  type="password"
+                  required
+                  value={authPassword}
+                  onChange={(e) => {
+                    setAuthPassword(e.target.value);
+                    setAuthError('');
+                  }}
+                  placeholder="Indtast adgangskode for oprettelse..."
+                  className="w-full font-mono text-xs p-2 bg-paper-50 border border-ink-crisp focus:border-rust"
+                />
+                {authError && (
+                  <p className="font-mono text-xs text-rust font-semibold">
+                    {authError}
+                  </p>
+                )}
+              </div>
+
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-ink-crisp">
                 <button
                   type="button"
-                  onClick={onClose}
+                  onClick={() => {
+                    setAuthPassword('');
+                    setAuthError('');
+                    onClose();
+                  }}
                   className="font-mono text-xs uppercase px-4 py-2 bg-paper-200 border border-ink-crisp text-ink hover:bg-paper-300"
                 >
                   Annuller
